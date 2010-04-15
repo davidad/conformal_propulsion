@@ -62,7 +62,6 @@ void init_log() {
 	}
 }
 
-
 double read_nidaq(TaskHandle* tp, const config_setting_t* dcfg) {
 	const char* chan;
 	double max;
@@ -275,7 +274,9 @@ int main() {
 	ps1_send("OUTPUT ON\n");
 
 	int delay;
+	int measurement_delay;
 	config_lookup_int(config, "delay", &delay);
+	config_lookup_int(config, "measurement_delay", &measurement_delay);
 	float volts = 0.0;
 	config_setting_t * profile = config_lookup(config, "profile");
 	int iters = config_setting_length(profile);
@@ -285,6 +286,7 @@ int main() {
 		volts = config_setting_get_float_elem(profile,i);
 		ps1_setv(volts);
 		double mv = ps1_getv(); double mc = ps1_getc();
+		usleep(measurement_delay);
 		double nv = read_nidaq(&nidaq, config_lookup(config, "nidaq"));
 		char buf[2048];
 		sprintf(buf, "Measured voltage: %lf V\nMeasured current: %lf A\nMeasured power: %lf W\nNIDAQ averaged voltage: %lf\n", mv, mc, mv*mc, nv);
