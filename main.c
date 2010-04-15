@@ -49,11 +49,15 @@ void init_log() {
 	if(plotter) {
 		char buf[255];
 		double xmin, xmax, ymin, ymax;
+		const char *xlabel, *ylabel, *size;
 		config_setting_lookup_float(plotter, "xmin", &xmin);
 		config_setting_lookup_float(plotter, "xmax", &xmax);
 		config_setting_lookup_float(plotter, "ymin", &ymin);
 		config_setting_lookup_float(plotter, "ymax", &ymax);
-		sprintf(buf, "tail -f %s | graph -T X -x %lf %lf -y %lf %lf &", graphfile, xmin, xmax, ymin, ymax);
+		config_setting_lookup_string(plotter, "x", &xlabel);
+		config_setting_lookup_string(plotter, "y", &ylabel);
+		config_setting_lookup_string(plotter, "size", &size);
+		sprintf(buf, "tail -f %s | graph -T X -X '%s' -Y '%s' -x %lf %lf -y %lf %lf --bitmap-size '%s' &", graphfile, xlabel, ylabel, xmin, xmax, ymin, ymax, size);
 		system(buf);
 	}
 }
@@ -174,8 +178,28 @@ void plog(char* format, ...) {
 	va_end(args);
 }
 
-void pgraph(double x, double y) {
-	fprintf(graphfd, "%lf\t%lf\n", x, y);
+void pgraph(double psuv, double psua, double psuw, double niv) {
+	const char *x, *y;
+	config_lookup_string(config, "plotter/x", &x);
+	config_lookup_string(config, "plotter/y", &y);
+	if(!strcmp(x,"PSU Volts")) {
+		fprintf(graphfd, "%lf\t", psuv);
+	} else if(!strcmp(x,"PSU Amps")) {
+		fprintf(graphfd, "%lf\t", psua);
+	} else if(!strcmp(x,"PSU Watts")) {
+		fprintf(graphfd, "%lf\t", psuw);
+	} else if(!strcmp(x,"NI Volts")) {
+		fprintf(graphfd, "%lf\t", niv);
+	}
+	if(!strcmp(y,"PSU Volts")) {
+		fprintf(graphfd, "%lf\n", psuv);
+	} else if(!strcmp(y,"PSU Amps")) {
+		fprintf(graphfd, "%lf\n", psua);
+	} else if(!strcmp(y,"PSU Watts")) {
+		fprintf(graphfd, "%lf\n", psuw);
+	} else if(!strcmp(y,"NI Volts")) {
+		fprintf(graphfd, "%lf\n", niv);
+	}
 	fflush(graphfd);
 }
 
@@ -266,7 +290,7 @@ int main() {
 		sprintf(buf, "Measured voltage: %lf V\nMeasured current: %lf A\nMeasured power: %lf W\nNIDAQ averaged voltage: %lf\n", mv, mc, mv*mc, nv);
 		plog("%s", buf);
 		printf("%s", buf);
-		pgraph(mv*mc,nv);
+		pgraph(mv,mc,mv*mc,nv);
 		i++;
 	}
 	ps1_send("VOLT 0.0\nOUTPUT OFF\nDISP:TEXT 'ps1 inactive'\n");
